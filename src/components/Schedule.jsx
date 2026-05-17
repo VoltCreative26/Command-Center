@@ -198,25 +198,8 @@ export function ScheduleBlocks({ data }) {
     setNewLabel('')
   }
 
-  // Compute total planned minutes
-  const totalMins = blocks.reduce((sum, b) => {
-    const dur = timeToMinutes(b.end_time) - timeToMinutes(b.start_time)
-    return sum + (dur > 0 ? dur : 0)
-  }, 0)
-  const plannedLabel = totalMins > 0
-    ? (() => {
-        const h = Math.floor(totalMins / 60)
-        const m = totalMins % 60
-        return `· ${h > 0 ? `${h}h` : ''}${m > 0 ? `${m}m` : ''} planned`
-      })()
-    : ''
-
   return (
     <div className="schedule-v2">
-      <div className="schedule-v2-meta-row">
-        <span className="schedule-v2-meta">{plannedLabel}</span>
-      </div>
-
       {blocks.length === 0 ? (
         <div className="schedule-v2-empty">
           {viewedDate === todayISO() ? 'Build today, hour by hour.' : 'No schedule recorded for this day.'}
