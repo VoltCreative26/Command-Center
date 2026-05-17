@@ -68,9 +68,6 @@ export default function MorningAnchor({ userId, viewedDate, onAnchorChange }) {
 
     return (
       <div className="anchor-summary">
-        <button className="anchor-edit" onClick={() => setExpanded(true)}>
-          Edit
-        </button>
         <h2 className="anchor-summary-headline">{headline}</h2>
         <div className="anchor-summary-grid">
           {anchor.feeling && (
@@ -98,6 +95,9 @@ export default function MorningAnchor({ userId, viewedDate, onAnchorChange }) {
             </span>
           </div>
         </div>
+        <button className="anchor-edit" onClick={() => setExpanded(true)}>
+          Edit
+        </button>
       </div>
     )
   }

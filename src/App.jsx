@@ -3,12 +3,14 @@ import { supabase, todayISO } from './lib/supabase'
 import Auth from './components/Auth'
 import DateNavigator from './components/DateNavigator'
 import MorningAnchor from './components/MorningAnchor'
-import Schedule from './components/Schedule'
+import Schedule, { useScheduleData, ScheduleBlocks, TasksList } from './components/Schedule'
 import Scoreboard from './components/Scoreboard'
 import EstimateModal from './components/EstimateModal'
 import IdeaInbox from './components/IdeaInbox'
 import NorthStars from './components/NorthStars'
 import CalendarView from './components/CalendarView'
+
+const DESKTOP_BREAKPOINT = 1200
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -17,6 +19,9 @@ export default function App() {
   const [scoreRefresh, setScoreRefresh] = useState(0)
   const [viewedDate, setViewedDate] = useState(todayISO())
   const [viewMode, setViewMode] = useState('day')
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== 'undefined' && window.innerWidth >= DESKTOP_BREAKPOINT
+  )
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -29,9 +34,13 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [])
 
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= DESKTOP_BREAKPOINT)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
   const handleTaskComplete = (task) => {
-    // Streak no longer depends on tasks — it's driven by morning anchors.
-    // Just refresh the scoreboard and show the estimate modal.
     setScoreRefresh((k) => k + 1)
     setEstimateTask(task)
   }
@@ -49,9 +58,66 @@ export default function App() {
 
   const userId = session.user.id
   const isPast = viewedDate < todayISO()
+  const scheduleData = useScheduleData(userId, viewedDate, handleTaskComplete)
+
+  const anchorSection = (
+    <section className="section" key="anchor">
+      <div className="section-head">
+        <span className="section-title">Morning Anchor</span>
+      </div>
+      <MorningAnchor userId={userId} viewedDate={viewedDate} onAnchorChange={handleAnchorChange} />
+    </section>
+  )
+
+  const scheduleSection = (
+    <section className="section" key="schedule">
+      <div className="section-head">
+        <span className="section-title">Schedule</span>
+        <span className="section-meta">Hour by hour</span>
+      </div>
+      <ScheduleBlocks data={scheduleData} />
+    </section>
+  )
+
+  const tasksSection = (
+    <section className="section" key="tasks">
+      <div className="section-head">
+        <span className="section-title">Tasks</span>
+      </div>
+      <TasksList data={scheduleData} />
+    </section>
+  )
+
+  const scoreboardSection = (
+    <section className="section" key="scoreboard">
+      <div className="section-head">
+        <span className="section-title">Scoreboard</span>
+      </div>
+      <Scoreboard userId={userId} viewedDate={viewedDate} refreshKey={scoreRefresh} />
+    </section>
+  )
+
+  const ideasSection = (
+    <section className="section" key="ideas">
+      <div className="section-head">
+        <span className="section-title">Idea Inbox</span>
+        <span className="section-meta">{isPast ? 'Snapshot' : '7-day shelf life'}</span>
+      </div>
+      <IdeaInbox userId={userId} viewedDate={viewedDate} onIdeaShipped={() => setScoreRefresh((k) => k + 1)} />
+    </section>
+  )
+
+  const northStarsSection = (
+    <section className="section" key="ns">
+      <div className="section-head">
+        <span className="section-title">90-Day North Stars</span>
+      </div>
+      <NorthStars userId={userId} />
+    </section>
+  )
 
   return (
-    <div className="app">
+    <div className={`app${isDesktop ? ' is-desktop' : ''}`}>
       <header className="masthead">
         <h1 className="masthead-title">Mission Control</h1>
       </header>
@@ -80,53 +146,29 @@ export default function App() {
       )}
 
       {viewMode === 'day' && (
-        <>
-          <section className="section">
-            <MorningAnchor
-              userId={userId}
-              viewedDate={viewedDate}
-              onAnchorChange={handleAnchorChange}
-            />
-          </section>
-
-          <section className="section">
-            <div className="section-head">
-              <span className="section-title">Schedule</span>
-              <span className="section-meta">Hour by hour</span>
+        isDesktop ? (
+          <div className="desktop-grid">
+            <div className="desktop-col desktop-hero">
+              {scheduleSection}
+              {tasksSection}
             </div>
-            <Schedule
-              userId={userId}
-              viewedDate={viewedDate}
-              onTaskComplete={handleTaskComplete}
-            />
-          </section>
-
-          <section className="section">
-            <div className="section-head">
-              <span className="section-title">Scoreboard</span>
+            <div className="desktop-col desktop-side">
+              {anchorSection}
+              {scoreboardSection}
+              {ideasSection}
+              {northStarsSection}
             </div>
-            <Scoreboard userId={userId} viewedDate={viewedDate} refreshKey={scoreRefresh} />
-          </section>
-
-          <section className="section">
-            <div className="section-head">
-              <span className="section-title">Idea Inbox</span>
-              <span className="section-meta">{isPast ? 'Snapshot' : '7-day shelf life'}</span>
-            </div>
-            <IdeaInbox
-              userId={userId}
-              viewedDate={viewedDate}
-              onIdeaShipped={() => setScoreRefresh((k) => k + 1)}
-            />
-          </section>
-
-          <section className="section">
-            <div className="section-head">
-              <span className="section-title">90-Day North Stars</span>
-            </div>
-            <NorthStars userId={userId} />
-          </section>
-        </>
+          </div>
+        ) : (
+          <div className="mobile-stack">
+            {anchorSection}
+            {scheduleSection}
+            {scoreboardSection}
+            {tasksSection}
+            {ideasSection}
+            {northStarsSection}
+          </div>
+        )
       )}
 
       <button className="signout" onClick={handleSignOut}>Sign out</button>

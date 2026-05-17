@@ -447,7 +447,7 @@ input:focus, textarea:focus { outline: none; }
   align-items: center;
   gap: var(--r3);
   padding: 14px var(--r4);
-  border-bottom: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line-strong);
   transition: background 120ms;
 }
 
@@ -538,28 +538,31 @@ input:focus, textarea:focus { outline: none; }
    ===================================================================== */
 
 .tasks-list {
-  margin-top: var(--r3);
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-card);
-  padding: var(--r2) var(--r4);
+  padding: var(--r1) var(--r4);
   box-shadow: var(--shadow-1);
 }
 
 .task {
   display: flex;
   align-items: center;
-  gap: var(--r3);
-  padding: 12px 0;
+  gap: var(--r2);
+  padding: 7px 0;
   border-bottom: 1px solid var(--line-soft);
+  position: relative;
+  transition: padding-right 150ms;
 }
+
+.task:hover { padding-right: 32px; }
 
 .task:last-child { border-bottom: none; }
 
 .task-check {
   flex-shrink: 0;
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   border: 2px solid var(--ghost);
   border-radius: 50%;
   display: grid;
@@ -585,12 +588,12 @@ input:focus, textarea:focus { outline: none; }
 
 .task-text {
   flex: 1;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--ink);
   background: transparent;
   border: none;
-  padding: 4px 0;
+  padding: 2px 0;
 }
 
 .task.done .task-text {
@@ -627,8 +630,12 @@ input:focus, textarea:focus { outline: none; }
   color: var(--ghost);
   font-size: 18px;
   opacity: 0;
-  width: 32px;
-  height: 32px;
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -641,8 +648,8 @@ input:focus, textarea:focus { outline: none; }
 .task-add {
   display: flex;
   align-items: center;
-  gap: var(--r3);
-  padding: 12px 0;
+  gap: var(--r2);
+  padding: 7px 0;
   border-top: 1px solid var(--line-soft);
 }
 
@@ -650,8 +657,8 @@ input:focus, textarea:focus { outline: none; }
   flex: 1;
   background: transparent;
   border: none;
-  padding: 6px 0;
-  font-size: 15px;
+  padding: 2px 0;
+  font-size: 13px;
   font-weight: 500;
   color: var(--ink);
 }
@@ -1349,6 +1356,8 @@ input:focus, textarea:focus { outline: none; }
   padding: var(--r4);
   box-shadow: var(--shadow-1);
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .anchor-summary-headline {
@@ -1398,14 +1407,14 @@ input:focus, textarea:focus { outline: none; }
 }
 
 .anchor-edit {
-  position: absolute;
-  top: var(--r3);
-  right: var(--r3);
+  display: inline-flex;
+  align-self: flex-end;
+  margin-top: var(--r3);
   font-size: 11px;
   font-weight: 600;
   color: var(--ink-soft);
   background: rgba(255, 255, 255, 0.7);
-  padding: 6px 12px;
+  padding: 6px 14px;
   border-radius: var(--radius-btn);
   transition: background 150ms, color 150ms;
 }
@@ -1535,17 +1544,26 @@ input:focus, textarea:focus { outline: none; }
 
 /* Mobile tweaks for new components */
 @media (max-width: 480px) {
-  .date-nav { padding: 4px; }
+  .date-nav { padding: 4px; flex-wrap: wrap; row-gap: 4px; }
   .date-nav-arrow { width: 32px; height: 32px; font-size: 16px; }
+  .date-nav-current { flex: 1 1 auto; min-width: 0; padding: 4px 8px; }
   .date-nav-label { font-size: 13px; }
   .date-nav-meta { font-size: 10px; }
-  .date-nav-today { font-size: 11px; padding: 6px 10px; }
+  .date-nav-today { font-size: 11px; padding: 8px 10px; flex: 1 0 100%; order: 99; text-align: center; }
   .anchor-summary-headline { font-size: 18px; }
   .anchor-summary-row { grid-template-columns: 64px 1fr; gap: var(--r2); padding: 8px 10px; }
   .anchor-summary-row-label { font-size: 10px; }
   .anchor-summary-row-value { font-size: 14px; }
-  .schedule-block-with-picker { grid-template-columns: 1fr; gap: 8px; padding: 12px var(--r3); }
-  .schedule-times { justify-content: flex-start; }
+  .schedule-block-with-picker {
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "times delete" "label label";
+    gap: 2px 10px;
+    padding: 6px var(--r3) 8px;
+    border-bottom-color: var(--line-strong);
+  }
+  .schedule-block-with-picker .schedule-times { grid-area: times; justify-content: flex-start; gap: 4px; }
+  .schedule-block-with-picker .schedule-delete { grid-area: delete; width: 24px; height: 24px; font-size: 16px; }
+  .schedule-block-with-picker .schedule-label-input { grid-area: label; font-size: 13px; padding: 0; line-height: 1.3; }
   .time-picker select { font-size: 14px; }
 }
 

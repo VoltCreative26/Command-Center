@@ -12,7 +12,8 @@ function timeToMinutes(timeStr) {
 
 const sortByTime = (arr) => [...arr].sort((a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time))
 
-export default function Schedule({ userId, viewedDate, onTaskComplete }) {
+// ── Shared data layer ──────────────────────────────────────────────────
+export function useScheduleData(userId, viewedDate, onTaskComplete) {
   const [blocks, setBlocks] = useState([])
   const [tasks, setTasks] = useState([])
   const [newStart, setNewStart] = useState(formatTime(9, '00', 'AM'))
@@ -23,9 +24,7 @@ export default function Schedule({ userId, viewedDate, onTaskComplete }) {
   const [editingDueDateId, setEditingDueDateId] = useState(null)
   const isToday = viewedDate === todayISO()
 
-  useEffect(() => {
-    load()
-  }, [userId, viewedDate])
+  useEffect(() => { load() }, [userId, viewedDate])
 
   const load = async () => {
     const blocksQuery = supabase
@@ -120,7 +119,7 @@ export default function Schedule({ userId, viewedDate, onTaskComplete }) {
       const completedAt = new Date().toISOString()
       setTasks(tasks.map((t) => (t.id === task.id ? { ...t, completed: true, completed_at: completedAt } : t)))
       await supabase.from('tasks').update({ completed: true, completed_at: completedAt }).eq('id', task.id)
-      onTaskComplete({ ...task, completed: true })
+      onTaskComplete?.({ ...task, completed: true })
     }
   }
 
@@ -146,131 +145,170 @@ export default function Schedule({ userId, viewedDate, onTaskComplete }) {
     await supabase.from('tasks').delete().eq('id', id)
   }
 
+  return {
+    viewedDate,
+    blocks, setBlocks,
+    tasks, setTasks,
+    newStart, setNewStart,
+    newEnd, setNewEnd,
+    newLabel, setNewLabel,
+    newTask, setNewTask,
+    newTaskEstimate, setNewTaskEstimate,
+    editingDueDateId, setEditingDueDateId,
+    addBlock, updateBlock, deleteBlock,
+    addTask, toggleTask, updateTaskText, updateTaskEstimate,
+    updateTaskDueDate, deleteTask,
+  }
+}
+
+// ── Schedule blocks (time-block list) ─────────────────────────────────
+export function ScheduleBlocks({ data }) {
+  const {
+    viewedDate, blocks, setBlocks,
+    newStart, setNewStart, newEnd, setNewEnd, newLabel, setNewLabel,
+    addBlock, updateBlock, deleteBlock,
+  } = data
+
+  return (
+    <div className="schedule">
+      {blocks.length === 0 ? (
+        <div style={{ padding: 'var(--r4)', textAlign: 'center', color: 'var(--muted)', fontWeight: 500 }}>
+          {viewedDate === todayISO()
+            ? 'Build today, hour by hour.'
+            : 'No schedule recorded for this day.'}
+        </div>
+      ) : (
+        blocks.map((b) => (
+          <div key={b.id} className="schedule-block-with-picker">
+            <div className="schedule-times">
+              <TimePicker value={b.start_time} onChange={(v) => updateBlock(b.id, 'start_time', v)} />
+              <span className="schedule-time-dash">–</span>
+              <TimePicker value={b.end_time} onChange={(v) => updateBlock(b.id, 'end_time', v)} />
+            </div>
+            <input
+              className="schedule-label-input"
+              value={b.label}
+              onChange={(e) => setBlocks(blocks.map((x) => x.id === b.id ? { ...x, label: e.target.value } : x))}
+              onBlur={(e) => updateBlock(b.id, 'label', e.target.value)}
+              placeholder="What's happening?"
+            />
+            <button className="schedule-delete" onClick={() => deleteBlock(b.id)}>×</button>
+          </div>
+        ))
+      )}
+      <div className="schedule-add-with-picker">
+        <div className="schedule-times">
+          <TimePicker value={newStart} onChange={setNewStart} />
+          <span className="schedule-time-dash">–</span>
+          <TimePicker value={newEnd} onChange={setNewEnd} />
+        </div>
+        <input
+          className="label-input"
+          placeholder="What's happening?"
+          value={newLabel}
+          onChange={(e) => setNewLabel(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && addBlock()}
+        />
+        <button className="btn-pill" onClick={addBlock}>Add</button>
+      </div>
+    </div>
+  )
+}
+
+// ── Tasks list ─────────────────────────────────────────────────────────
+export function TasksList({ data }) {
+  const {
+    viewedDate, tasks, setTasks,
+    newTask, setNewTask, newTaskEstimate, setNewTaskEstimate,
+    editingDueDateId, setEditingDueDateId,
+    addTask, toggleTask, updateTaskText, updateTaskEstimate, updateTaskDueDate, deleteTask,
+  } = data
+
+  return (
+    <div className="tasks-list">
+      {tasks.map((t) => {
+        const isCarryover = t.due_date && t.due_date < viewedDate
+        const dueLabel = isCarryover
+          ? new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          : null
+
+        return (
+          <div key={t.id} className={`task ${t.completed ? 'done' : ''}`}>
+            <button className="task-check" onClick={() => toggleTask(t)}>
+              {t.completed && <span className="task-check-mark">✓</span>}
+            </button>
+            <input
+              className="task-text"
+              value={t.title}
+              onChange={(e) => setTasks(tasks.map((x) => x.id === t.id ? { ...x, title: e.target.value } : x))}
+              onBlur={(e) => updateTaskText(t.id, e.target.value)}
+            />
+            {isCarryover && (
+              <span className="task-due-chip" title={`Originally due ${dueLabel}`}>
+                {dueLabel}
+              </span>
+            )}
+            {editingDueDateId === t.id ? (
+              <input
+                type="date"
+                className="task-due-input"
+                defaultValue={t.due_date || viewedDate}
+                onChange={(e) => e.target.value && updateTaskDueDate(t.id, e.target.value)}
+                onBlur={() => setEditingDueDateId(null)}
+                autoFocus
+              />
+            ) : (
+              <button
+                className="task-due-btn"
+                onClick={() => setEditingDueDateId(t.id)}
+                title="Set due date"
+              >
+                Due
+              </button>
+            )}
+            <div className="task-estimate" title="Estimated minutes">
+              <input
+                type="number"
+                value={t.estimated_minutes || ''}
+                onChange={(e) => updateTaskEstimate(t.id, e.target.value)}
+                placeholder="—"
+              />
+              <span>m</span>
+            </div>
+            <button className="task-delete" onClick={() => deleteTask(t.id)}>×</button>
+          </div>
+        )
+      })}
+      <div className="task-add">
+        <div className="task-check" style={{ borderStyle: 'dashed', borderColor: 'var(--ghost)' }}></div>
+        <input
+          placeholder="Add a task..."
+          value={newTask}
+          onChange={(e) => setNewTask(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && addTask()}
+        />
+        <div className="task-estimate" style={{ background: 'transparent', border: '1px dashed var(--line-strong)', color: 'var(--muted)' }}>
+          <input
+            type="number"
+            placeholder="min"
+            value={newTaskEstimate}
+            onChange={(e) => setNewTaskEstimate(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && addTask()}
+            style={{ width: '32px', color: 'var(--muted)' }}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Back-compat default export ─────────────────────────────────────────
+export default function Schedule({ userId, viewedDate, onTaskComplete }) {
+  const data = useScheduleData(userId, viewedDate, onTaskComplete)
   return (
     <div>
-      <div className="schedule">
-        {blocks.length === 0 ? (
-          <div style={{ padding: 'var(--r4)', textAlign: 'center', color: 'var(--muted)', fontWeight: 500 }}>
-            {viewedDate === todayISO()
-              ? 'Build today, hour by hour.'
-              : 'No schedule recorded for this day.'}
-          </div>
-        ) : (
-          blocks.map((b) => (
-            <div key={b.id} className="schedule-block-with-picker">
-              <div className="schedule-times">
-                <TimePicker
-                  value={b.start_time}
-                  onChange={(v) => updateBlock(b.id, 'start_time', v)}
-                />
-                <span className="schedule-time-dash">–</span>
-                <TimePicker
-                  value={b.end_time}
-                  onChange={(v) => updateBlock(b.id, 'end_time', v)}
-                />
-              </div>
-              <input
-                className="schedule-label-input"
-                value={b.label}
-                onChange={(e) => setBlocks(blocks.map((x) => x.id === b.id ? { ...x, label: e.target.value } : x))}
-                onBlur={(e) => updateBlock(b.id, 'label', e.target.value)}
-                placeholder="What's happening?"
-              />
-              <button className="schedule-delete" onClick={() => deleteBlock(b.id)}>×</button>
-            </div>
-          ))
-        )}
-        <div className="schedule-add-with-picker">
-          <div className="schedule-times">
-            <TimePicker value={newStart} onChange={setNewStart} />
-            <span className="schedule-time-dash">–</span>
-            <TimePicker value={newEnd} onChange={setNewEnd} />
-          </div>
-          <input
-            className="label-input"
-            placeholder="What's happening?"
-            value={newLabel}
-            onChange={(e) => setNewLabel(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addBlock()}
-          />
-          <button className="btn-pill" onClick={addBlock}>Add</button>
-        </div>
-      </div>
-
-      <div className="tasks-list">
-        {tasks.map((t) => {
-          const isCarryover = t.due_date && t.due_date < viewedDate
-          const dueLabel = isCarryover
-            ? new Date(t.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-            : null
-
-          return (
-            <div key={t.id} className={`task ${t.completed ? 'done' : ''}`}>
-              <button className="task-check" onClick={() => toggleTask(t)}>
-                {t.completed && <span className="task-check-mark">✓</span>}
-              </button>
-              <input
-                className="task-text"
-                value={t.title}
-                onChange={(e) => setTasks(tasks.map((x) => x.id === t.id ? { ...x, title: e.target.value } : x))}
-                onBlur={(e) => updateTaskText(t.id, e.target.value)}
-              />
-              {isCarryover && (
-                <span className="task-due-chip" title={`Originally due ${dueLabel}`}>
-                  {dueLabel}
-                </span>
-              )}
-              {editingDueDateId === t.id ? (
-                <input
-                  type="date"
-                  className="task-due-input"
-                  defaultValue={t.due_date || viewedDate}
-                  onChange={(e) => e.target.value && updateTaskDueDate(t.id, e.target.value)}
-                  onBlur={() => setEditingDueDateId(null)}
-                  autoFocus
-                />
-              ) : (
-                <button
-                  className="task-due-btn"
-                  onClick={() => setEditingDueDateId(t.id)}
-                  title="Set due date"
-                >
-                  Due
-                </button>
-              )}
-              <div className="task-estimate" title="Estimated minutes">
-                <input
-                  type="number"
-                  value={t.estimated_minutes || ''}
-                  onChange={(e) => updateTaskEstimate(t.id, e.target.value)}
-                  placeholder="—"
-                />
-                <span>m</span>
-              </div>
-              <button className="task-delete" onClick={() => deleteTask(t.id)}>×</button>
-            </div>
-          )
-        })}
-        <div className="task-add">
-          <div className="task-check" style={{ borderStyle: 'dashed', borderColor: 'var(--ghost)' }}></div>
-          <input
-            placeholder="Add a task..."
-            value={newTask}
-            onChange={(e) => setNewTask(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addTask()}
-          />
-          <div className="task-estimate" style={{ background: 'transparent', border: '1px dashed var(--line-strong)', color: 'var(--muted)' }}>
-            <input
-              type="number"
-              placeholder="min"
-              value={newTaskEstimate}
-              onChange={(e) => setNewTaskEstimate(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addTask()}
-              style={{ width: '32px', color: 'var(--muted)' }}
-            />
-          </div>
-        </div>
-      </div>
+      <ScheduleBlocks data={data} />
+      <TasksList data={data} />
     </div>
   )
 }

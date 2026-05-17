@@ -1,0 +1,81 @@
+/* =====================================================================
+   DESKTOP LAYOUT — two-column dashboard
+   Activated by .app.is-desktop (added via JS at the chosen breakpoint —
+   1200px by default; see App.jsx).
+
+   Tokens (override on .app.is-desktop with inline style or :root override):
+     --dt-max        page max-width        (default 1440px)
+     --dt-gap        gap between columns   (default 32px)
+     --dt-hero-fr    hero column flex      (default 1.55fr)
+   ===================================================================== */
+
+.app.is-desktop {
+  max-width: var(--dt-max, 1440px);
+  padding-left: var(--r5);
+  padding-right: var(--r5);
+}
+
+/* Date nav + view tabs stay full-width above the grid */
+.app.is-desktop .date-nav,
+.app.is-desktop .view-tabs {
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* The two-column grid only renders in DAY view (see App.jsx) */
+.app.is-desktop .desktop-grid {
+  display: grid;
+  grid-template-columns: var(--dt-hero-fr, 1.55fr) 1fr;
+  gap: var(--dt-gap, 32px);
+  align-items: start;
+}
+
+/* Each column stacks its sections vertically and gaps them. Sections
+   inside the columns lose their outer bottom-margin in favor of the gap. */
+.app.is-desktop .desktop-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r5);
+  min-width: 0; /* let the grid track shrink — prevents overflow */
+}
+
+.app.is-desktop .desktop-grid .section {
+  margin-bottom: 0;
+}
+
+/* Week / Month views: let the calendar breathe across the full content area */
+.app.is-desktop .cal-view,
+.app.is-desktop .cal-fullbleed {
+  max-width: 100%;
+}
+
+.app.is-desktop .cal-grid .cal-cell { min-height: 110px; }
+.app.is-desktop .cal-grid--week .cal-cell { min-height: 220px; }
+
+/* Anchor card in the narrow side column — headline shrinks slightly so
+   it never wraps awkwardly inside the smaller column width. */
+.app.is-desktop .desktop-side .anchor-summary-headline {
+  font-size: 19px;
+}
+
+/* The scoreboard's two chips stay compact in the side column */
+.app.is-desktop .desktop-side .scoreboard {
+  gap: var(--r2);
+}
+
+.app.is-desktop .desktop-side .score-card { padding: var(--r3); }
+.app.is-desktop .desktop-side .score-card-number { font-size: 52px; }
+
+/* Sign-out lives outside the grid, centered below with extra breathing room */
+.app.is-desktop .signout { margin-top: var(--r6); }
+
+/* Masthead spacing tightens slightly on desktop */
+.app.is-desktop .masthead {
+  padding-bottom: var(--r3);
+  margin-bottom: var(--r3);
+}
+
+/* Single-column fallback for narrower windows: .mobile-stack is just a
+   plain wrapper — sections inside use their existing margin-bottom. */
+.mobile-stack { display: block; }
