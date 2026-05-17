@@ -4,9 +4,9 @@ import { supabase, todayISO } from '../lib/supabase'
 export default function MorningAnchor({ userId, viewedDate, onAnchorChange }) {
   const [anchor, setAnchor] = useState(null)
   const [expanded, setExpanded] = useState(false)
-  const [feeling, setFeeling] = useState('')
-  const [win, setWin] = useState('')
-  const [focus, setFocus] = useState('')
+  const [yesterdayWin, setYesterdayWin] = useState('')
+  const [futureMattThanks, setFutureMattThanks] = useState('')
+  const [nonNegotiable, setNonNegotiable] = useState('')
   const isToday = viewedDate === todayISO()
 
   useEffect(() => {
@@ -22,35 +22,35 @@ export default function MorningAnchor({ userId, viewedDate, onAnchorChange }) {
       .maybeSingle()
     if (data) {
       setAnchor(data)
-      setFeeling(data.feeling || '')
-      setWin(data.win || '')
-      setFocus(data.focus || '')
+      setYesterdayWin(data.feeling || '')
+      setFutureMattThanks(data.win || '')
+      setNonNegotiable(data.focus || '')
       setExpanded(false)
     } else {
       setAnchor(null)
-      setFeeling('')
-      setWin('')
-      setFocus('')
-      setExpanded(isToday) // auto-expand the form for today, hide for past days with no anchor
+      setYesterdayWin('')
+      setFutureMattThanks('')
+      setNonNegotiable('')
+      setExpanded(isToday)
     }
   }
 
   const save = async () => {
-    if (!feeling && !win && !focus) return
+    if (!futureMattThanks || !nonNegotiable) return
     const { data } = await supabase
       .from('morning_anchors')
       .upsert(
-        { user_id: userId, date: viewedDate, feeling, win, focus },
+        { user_id: userId, date: viewedDate, feeling: yesterdayWin, win: futureMattThanks, focus: nonNegotiable },
         { onConflict: 'user_id,date' }
       )
       .select()
       .single()
     setAnchor(data)
     setExpanded(false)
-    onAnchorChange?.() // tell parent so streak can recalculate
+    onAnchorChange?.()
   }
 
-  // If anchor exists and we're not editing — show the summary card
+  // Summary card — anchor exists and not editing
   if (anchor && !expanded) {
     const headline = isToday
       ? "Let's make today your best one yet."
@@ -63,20 +63,20 @@ export default function MorningAnchor({ userId, viewedDate, onAnchorChange }) {
         </button>
         <h2 className="anchor-summary-headline">{headline}</h2>
         <div className="anchor-summary-grid">
+          {anchor.feeling && (
+            <div className="anchor-summary-row">
+              <span className="anchor-summary-row-label">Yesterday</span>
+              <span className="anchor-summary-row-value">{anchor.feeling}</span>
+            </div>
+          )}
           <div className="anchor-summary-row">
-            <span className="anchor-summary-row-label">Feeling</span>
-            <span className={`anchor-summary-row-value ${!anchor.feeling ? 'anchor-summary-row-empty' : ''}`}>
-              {anchor.feeling || '—'}
-            </span>
-          </div>
-          <div className="anchor-summary-row">
-            <span className="anchor-summary-row-label">Win</span>
+            <span className="anchor-summary-row-label">Future Matt</span>
             <span className={`anchor-summary-row-value ${!anchor.win ? 'anchor-summary-row-empty' : ''}`}>
               {anchor.win || '—'}
             </span>
           </div>
           <div className="anchor-summary-row">
-            <span className="anchor-summary-row-label">Focus</span>
+            <span className="anchor-summary-row-label">Today</span>
             <span className={`anchor-summary-row-value ${!anchor.focus ? 'anchor-summary-row-empty' : ''}`}>
               {anchor.focus || '—'}
             </span>
@@ -86,7 +86,7 @@ export default function MorningAnchor({ userId, viewedDate, onAnchorChange }) {
     )
   }
 
-  // If there's no anchor and we're viewing a past day — show a quiet collapsed hint
+  // Collapsed hint for past days with no anchor
   if (!anchor && !expanded) {
     return (
       <div className="anchor-collapsed" onClick={() => setExpanded(true)}>
@@ -105,30 +105,30 @@ export default function MorningAnchor({ userId, viewedDate, onAnchorChange }) {
           : 'Backfilling this day. Be honest about what was true then.'}
       </p>
       <div className="anchor-field">
-        <label className="anchor-label">01 — How am I feeling?</label>
+        <label className="anchor-label">01 — What did I do well yesterday? <span className="anchor-label-optional">(optional)</span></label>
         <input
           className="anchor-input"
-          value={feeling}
-          onChange={(e) => setFeeling(e.target.value)}
-          placeholder="Honestly, in one line"
+          value={yesterdayWin}
+          onChange={(e) => setYesterdayWin(e.target.value)}
+          placeholder="A win, big or small"
         />
       </div>
       <div className="anchor-field">
-        <label className="anchor-label">02 — What would make today a win?</label>
+        <label className="anchor-label">02 — What would future Matt thank me for doing today?</label>
         <input
           className="anchor-input"
-          value={win}
-          onChange={(e) => setWin(e.target.value)}
-          placeholder="One specific thing"
+          value={futureMattThanks}
+          onChange={(e) => setFutureMattThanks(e.target.value)}
+          placeholder="The move that compounds"
         />
       </div>
       <div className="anchor-field">
-        <label className="anchor-label">03 — Where will my focus go?</label>
+        <label className="anchor-label">03 — What's my non-negotiable today?</label>
         <input
           className="anchor-input"
-          value={focus}
-          onChange={(e) => setFocus(e.target.value)}
-          placeholder="The one priority above all"
+          value={nonNegotiable}
+          onChange={(e) => setNonNegotiable(e.target.value)}
+          placeholder="The one thing that must happen"
         />
       </div>
       <button className="anchor-done" onClick={save}>Done</button>

@@ -421,6 +421,14 @@ input:focus, textarea:focus { outline: none; }
 
 .anchor-input::placeholder { color: var(--whisper); }
 
+.anchor-label-optional {
+  font-weight: 400;
+  color: var(--whisper);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
+}
+
 /* =====================================================================
    SCHEDULE
    ===================================================================== */
