@@ -2,12 +2,31 @@ import { useState, useEffect } from 'react'
 import { supabase, todayISO } from '../lib/supabase'
 import TimePicker, { formatTime, parseTime } from './TimePicker'
 
-function timeToMinutes(timeStr) {
+export function timeToMinutes(timeStr) {
   const { hour, minute, period } = parseTime(timeStr)
   let h = hour
   if (period === 'AM') { if (h === 12) h = 0 }
   else { if (h !== 12) h += 12 }
   return h * 60 + parseInt(minute, 10)
+}
+
+// "9:00 AM" → "09:00"
+function to24h(timeStr) {
+  const mins = timeToMinutes(timeStr)
+  const h = Math.floor(mins / 60) % 24
+  const m = mins % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
+// Add 60 minutes to a stored time string
+function addOneHour(timeStr) {
+  const totalMins = timeToMinutes(timeStr) + 60
+  const h24 = totalMins % (24 * 60) / 60 | 0
+  const m = totalMins % 60
+  const snappedM = String(Math.round(m / 15) * 15 % 60).padStart(2, '0')
+  const period = h24 < 12 ? 'AM' : 'PM'
+  const h12 = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24
+  return formatTime(h12, snappedM === '60' ? '00' : snappedM, period)
 }
 
 const sortByTime = (arr) => [...arr].sort((a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time))
@@ -16,8 +35,6 @@ const sortByTime = (arr) => [...arr].sort((a, b) => timeToMinutes(a.start_time) 
 export function useScheduleData(userId, viewedDate, onTaskComplete) {
   const [blocks, setBlocks] = useState([])
   const [tasks, setTasks] = useState([])
-  const [newStart, setNewStart] = useState(formatTime(9, '00', 'AM'))
-  const [newEnd, setNewEnd] = useState(formatTime(9, '30', 'AM'))
   const [newLabel, setNewLabel] = useState('')
   const [newTask, setNewTask] = useState('')
   const [newTaskEstimate, setNewTaskEstimate] = useState('')
@@ -62,22 +79,21 @@ export function useScheduleData(userId, viewedDate, onTaskComplete) {
     }
   }
 
-  const addBlock = async () => {
-    if (!newStart || !newEnd || !newLabel.trim()) return
+  const addBlock = async (label, start, end) => {
+    if (!label.trim()) return
     const { data } = await supabase
       .from('schedule_blocks')
       .insert({
         user_id: userId,
         date: viewedDate,
-        start_time: newStart,
-        end_time: newEnd,
-        label: newLabel.trim(),
+        start_time: start,
+        end_time: end,
+        label: label.trim(),
         position: blocks.length,
       })
       .select()
       .single()
     if (data) setBlocks(sortByTime([...blocks, data]))
-    setNewLabel('')
   }
 
   const updateBlock = async (id, field, value) => {
@@ -149,8 +165,6 @@ export function useScheduleData(userId, viewedDate, onTaskComplete) {
     viewedDate,
     blocks, setBlocks,
     tasks, setTasks,
-    newStart, setNewStart,
-    newEnd, setNewEnd,
     newLabel, setNewLabel,
     newTask, setNewTask,
     newTaskEstimate, setNewTaskEstimate,
@@ -161,55 +175,92 @@ export function useScheduleData(userId, viewedDate, onTaskComplete) {
   }
 }
 
-// ── Schedule blocks (time-block list) ─────────────────────────────────
+// ── Schedule blocks ────────────────────────────────────────────────────
 export function ScheduleBlocks({ data }) {
   const {
     viewedDate, blocks, setBlocks,
-    newStart, setNewStart, newEnd, setNewEnd, newLabel, setNewLabel,
+    newLabel, setNewLabel,
     addBlock, updateBlock, deleteBlock,
   } = data
 
+  const [editingTimeId, setEditingTimeId] = useState(null)
+
+  const getNextSlot = () => {
+    if (blocks.length === 0) return { start: formatTime(9, '00', 'AM'), end: formatTime(10, '00', 'AM') }
+    const last = blocks[blocks.length - 1]
+    return { start: last.end_time, end: addOneHour(last.end_time) }
+  }
+
+  const handleAdd = async () => {
+    if (!newLabel.trim()) return
+    const { start, end } = getNextSlot()
+    await addBlock(newLabel, start, end)
+    setNewLabel('')
+  }
+
+  // Compute total planned minutes
+  const totalMins = blocks.reduce((sum, b) => {
+    const dur = timeToMinutes(b.end_time) - timeToMinutes(b.start_time)
+    return sum + (dur > 0 ? dur : 0)
+  }, 0)
+  const plannedLabel = totalMins > 0
+    ? (() => {
+        const h = Math.floor(totalMins / 60)
+        const m = totalMins % 60
+        return `· ${h > 0 ? `${h}h` : ''}${m > 0 ? `${m}m` : ''} planned`
+      })()
+    : ''
+
   return (
-    <div className="schedule">
+    <div className="schedule-v2">
+      <div className="schedule-v2-meta-row">
+        <span className="schedule-v2-meta">{plannedLabel}</span>
+      </div>
+
       {blocks.length === 0 ? (
-        <div style={{ padding: 'var(--r4)', textAlign: 'center', color: 'var(--muted)', fontWeight: 500 }}>
-          {viewedDate === todayISO()
-            ? 'Build today, hour by hour.'
-            : 'No schedule recorded for this day.'}
+        <div className="schedule-v2-empty">
+          {viewedDate === todayISO() ? 'Build today, hour by hour.' : 'No schedule recorded for this day.'}
         </div>
       ) : (
-        blocks.map((b) => (
-          <div key={b.id} className="schedule-block-with-picker">
-            <div className="schedule-times">
-              <TimePicker value={b.start_time} onChange={(v) => updateBlock(b.id, 'start_time', v)} />
-              <span className="schedule-time-dash">–</span>
-              <TimePicker value={b.end_time} onChange={(v) => updateBlock(b.id, 'end_time', v)} />
+        <div className="schedule-v2-list">
+          {blocks.map((b) => (
+            <div key={b.id} className="schedule-v2-block">
+              <div className="schedule-v2-block-top">
+                {editingTimeId === b.id ? (
+                  <div className="schedule-v2-time-edit">
+                    <TimePicker value={b.start_time} onChange={(v) => updateBlock(b.id, 'start_time', v)} />
+                    <span className="schedule-v2-dash">—</span>
+                    <TimePicker value={b.end_time} onChange={(v) => updateBlock(b.id, 'end_time', v)} />
+                    <button className="schedule-v2-time-done" onClick={() => setEditingTimeId(null)}>Done</button>
+                  </div>
+                ) : (
+                  <button className="schedule-v2-time" onClick={() => setEditingTimeId(b.id)}>
+                    {to24h(b.start_time)} — {to24h(b.end_time)}
+                  </button>
+                )}
+                <button className="schedule-v2-delete" onClick={() => deleteBlock(b.id)}>×</button>
+              </div>
+              <input
+                className="schedule-v2-label"
+                value={b.label}
+                onChange={(e) => setBlocks(blocks.map((x) => x.id === b.id ? { ...x, label: e.target.value } : x))}
+                onBlur={(e) => updateBlock(b.id, 'label', e.target.value)}
+                placeholder="What's happening?"
+              />
             </div>
-            <input
-              className="schedule-label-input"
-              value={b.label}
-              onChange={(e) => setBlocks(blocks.map((x) => x.id === b.id ? { ...x, label: e.target.value } : x))}
-              onBlur={(e) => updateBlock(b.id, 'label', e.target.value)}
-              placeholder="What's happening?"
-            />
-            <button className="schedule-delete" onClick={() => deleteBlock(b.id)}>×</button>
-          </div>
-        ))
-      )}
-      <div className="schedule-add-with-picker">
-        <div className="schedule-times">
-          <TimePicker value={newStart} onChange={setNewStart} />
-          <span className="schedule-time-dash">–</span>
-          <TimePicker value={newEnd} onChange={setNewEnd} />
+          ))}
         </div>
+      )}
+
+      <div className="schedule-v2-add">
         <input
-          className="label-input"
-          placeholder="What's happening?"
+          className="schedule-v2-add-input"
+          placeholder="Add a block — what are you doing?"
           value={newLabel}
           onChange={(e) => setNewLabel(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && addBlock()}
+          onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
         />
-        <button className="btn-pill" onClick={addBlock}>Add</button>
+        <button className="schedule-v2-add-btn" onClick={handleAdd}>Add</button>
       </div>
     </div>
   )
@@ -244,9 +295,7 @@ export function TasksList({ data }) {
               onBlur={(e) => updateTaskText(t.id, e.target.value)}
             />
             {isCarryover && (
-              <span className="task-due-chip" title={`Originally due ${dueLabel}`}>
-                {dueLabel}
-              </span>
+              <span className="task-due-chip" title={`Originally due ${dueLabel}`}>{dueLabel}</span>
             )}
             {editingDueDateId === t.id ? (
               <input
@@ -258,13 +307,7 @@ export function TasksList({ data }) {
                 autoFocus
               />
             ) : (
-              <button
-                className="task-due-btn"
-                onClick={() => setEditingDueDateId(t.id)}
-                title="Set due date"
-              >
-                Due
-              </button>
+              <button className="task-due-btn" onClick={() => setEditingDueDateId(t.id)} title="Set due date">Due</button>
             )}
             <div className="task-estimate" title="Estimated minutes">
               <input
