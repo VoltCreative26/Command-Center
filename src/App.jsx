@@ -9,6 +9,7 @@ import EstimateModal from './components/EstimateModal'
 import IdeaInbox from './components/IdeaInbox'
 import NorthStars from './components/NorthStars'
 import CalendarView from './components/CalendarView'
+import UserProfile from './components/UserProfile'
 
 const DESKTOP_BREAKPOINT = 1200
 
@@ -172,7 +173,10 @@ export default function App() {
         )
       )}
 
-      <button className="signout" onClick={handleSignOut}>Sign out</button>
+      <div className="profile-section">
+        <UserProfile user={session.user} />
+        <button className="signout" onClick={handleSignOut}>Sign out</button>
+      </div>
 
       {estimateTask && (
         <EstimateModal task={estimateTask} onClose={() => setEstimateTask(null)} />
