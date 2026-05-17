@@ -10,12 +10,9 @@ export function timeToMinutes(timeStr) {
   return h * 60 + parseInt(minute, 10)
 }
 
-// "9:00 AM" → "09:00"
-function to24h(timeStr) {
-  const mins = timeToMinutes(timeStr)
-  const h = Math.floor(mins / 60) % 24
-  const m = mins % 60
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+// "9:00 AM" → "9:00 AM" (stored format is already 12h)
+function displayTime(timeStr) {
+  return timeStr || ''
 }
 
 // Add 60 minutes to a stored time string
@@ -218,7 +215,7 @@ export function ScheduleBlocks({ data }) {
                   </div>
                 ) : (
                   <button className="schedule-v2-time" onClick={() => setEditingTimeId(b.id)}>
-                    {to24h(b.start_time)} — {to24h(b.end_time)}
+                    {displayTime(b.start_time)} — {displayTime(b.end_time)}
                   </button>
                 )}
                 <button className="schedule-v2-delete" onClick={() => deleteBlock(b.id)}>×</button>
