@@ -164,8 +164,8 @@ export default function App() {
           <div className="mobile-stack">
             {anchorSection}
             {scheduleSection}
-            {scoreboardSection}
             {tasksSection}
+            {scoreboardSection}
             {ideasSection}
             {northStarsSection}
           </div>
