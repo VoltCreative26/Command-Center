@@ -7,6 +7,9 @@ export default function IdeaInbox({ userId, viewedDate, onIdeaShipped }) {
   const [newTitle, setNewTitle] = useState('')
   const [newAction, setNewAction] = useState('')
   const [pendingAction, setPendingAction] = useState({})
+  const [showArchive, setShowArchive] = useState(false)
+  const [archivedIdeas, setArchivedIdeas] = useState([])
+  const [archiveLoading, setArchiveLoading] = useState(false)
   const isToday = viewedDate === todayISO()
 
   useEffect(() => {
@@ -15,7 +18,6 @@ export default function IdeaInbox({ userId, viewedDate, onIdeaShipped }) {
 
   const load = async () => {
     if (isToday) {
-      // Today: auto-expire and show fresh inbox
       await supabase
         .from('ideas')
         .update({ status: 'expired' })
@@ -32,19 +34,15 @@ export default function IdeaInbox({ userId, viewedDate, onIdeaShipped }) {
       setIdeas(data || [])
       setShippedThatDay([])
     } else {
-      // Past day: show ideas that were active (fresh) on that date and those scheduled that day
       const endOfDay = `${viewedDate}T23:59:59`
       const startOfDay = `${viewedDate}T00:00:00`
 
-      // Active ideas on that day: created on or before, not yet expired, not yet scheduled before that day
       const { data: active } = await supabase
         .from('ideas')
         .select('*')
         .eq('user_id', userId)
         .lte('created_at', endOfDay)
         .gt('expires_at', startOfDay)
-      // Filter: ideas that, at the close of viewedDate, were still fresh
-      // i.e., either still status='fresh' today, OR scheduled_for is AFTER viewedDate, OR they were shipped/expired AFTER viewedDate
       const filtered = (active || []).filter((idea) => {
         if (idea.status === 'fresh') return true
         if (idea.scheduled_for && idea.scheduled_for > viewedDate) return true
@@ -52,7 +50,6 @@ export default function IdeaInbox({ userId, viewedDate, onIdeaShipped }) {
       })
       setIdeas(filtered)
 
-      // Ideas shipped on that day
       const { data: shipped } = await supabase
         .from('ideas')
         .select('*')
@@ -60,6 +57,23 @@ export default function IdeaInbox({ userId, viewedDate, onIdeaShipped }) {
         .eq('scheduled_for', viewedDate)
       setShippedThatDay(shipped || [])
     }
+  }
+
+  const loadArchive = async () => {
+    setArchiveLoading(true)
+    const { data } = await supabase
+      .from('ideas')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'scheduled')
+      .order('scheduled_for', { ascending: false })
+    setArchivedIdeas(data || [])
+    setArchiveLoading(false)
+  }
+
+  const openArchive = () => {
+    setShowArchive(true)
+    loadArchive()
   }
 
   const addIdea = async () => {
@@ -117,31 +131,70 @@ export default function IdeaInbox({ userId, viewedDate, onIdeaShipped }) {
     await supabase.from('ideas').update({ status: 'killed' }).eq('id', id)
   }
 
-  // Past-day, read-only-style view
+  const archiveModal = showArchive && (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setShowArchive(false)}>
+      <div className="idea-archive-modal">
+        <div className="idea-archive-header">
+          <h2 className="idea-archive-title">Shipped Ideas</h2>
+          <button className="idea-archive-close" onClick={() => setShowArchive(false)}>×</button>
+        </div>
+        {archiveLoading ? (
+          <div className="idea-archive-empty">Loading…</div>
+        ) : archivedIdeas.length === 0 ? (
+          <div className="idea-archive-empty">No shipped ideas yet. Ship your first one.</div>
+        ) : (
+          <div className="idea-archive-list">
+            {archivedIdeas.map((idea) => {
+              const shippedDate = idea.scheduled_for
+                ? new Date(idea.scheduled_for + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                : null
+              return (
+                <div key={idea.id} className="idea-archive-item">
+                  <div className="idea-archive-item-header">
+                    <span className="idea-archive-item-title">{idea.title}</span>
+                    {shippedDate && (
+                      <span className="idea-archive-item-date">{shippedDate}</span>
+                    )}
+                  </div>
+                  {idea.first_action && (
+                    <div className="idea-archive-item-action">→ {idea.first_action}</div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
+  // Past-day, read-only view
   if (!isToday) {
     const allItems = [
       ...shippedThatDay.map((i) => ({ ...i, _kind: 'shipped' })),
       ...ideas.map((i) => ({ ...i, _kind: 'active' })),
     ]
-    if (allItems.length === 0) {
-      return <div className="ideas-empty">No ideas in flight on this day.</div>
-    }
     return (
       <div>
-        {allItems.map((idea) => (
-          <div key={idea.id} className="idea">
-            <div className="idea-header">
-              <div className="idea-title">{idea.title}</div>
-              <div
-                className="idea-countdown"
-                style={idea._kind === 'shipped' ? { background: 'var(--primary-soft)', color: 'var(--primary-darker)' } : {}}
-              >
-                {idea._kind === 'shipped' ? 'Shipped' : 'Active'}
+        {archiveModal}
+        {allItems.length === 0 ? (
+          <div className="ideas-empty">No ideas in flight on this day.</div>
+        ) : (
+          allItems.map((idea) => (
+            <div key={idea.id} className="idea">
+              <div className="idea-header">
+                <div className="idea-title">{idea.title}</div>
+                <div
+                  className="idea-countdown"
+                  style={idea._kind === 'shipped' ? { background: 'var(--primary-soft)', color: 'var(--primary-darker)' } : {}}
+                >
+                  {idea._kind === 'shipped' ? 'Shipped' : 'Active'}
+                </div>
               </div>
+              {idea.first_action && <div className="idea-action">→ {idea.first_action}</div>}
             </div>
-            {idea.first_action && <div className="idea-action">→ {idea.first_action}</div>}
-          </div>
-        ))}
+          ))
+        )}
       </div>
     )
   }
@@ -149,6 +202,10 @@ export default function IdeaInbox({ userId, viewedDate, onIdeaShipped }) {
   // Today: full capture + action UI
   return (
     <div>
+      {archiveModal}
+      <div className="idea-inbox-toolbar">
+        <button className="idea-archive-btn" onClick={openArchive}>View Archive</button>
+      </div>
       <div className="idea-add">
         <input
           className="idea-add-title"
