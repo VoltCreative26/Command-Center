@@ -123,8 +123,6 @@ export default function App() {
         <h1 className="masthead-title">Mission Control</h1>
       </header>
 
-      <div className="motivation-banner">Remember, you're doing this for Matt in 1 year from now.</div>
-
       {viewMode === 'day' && <DateNavigator viewedDate={viewedDate} onChange={setViewedDate} />}
 
       <div className="view-tabs">

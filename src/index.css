@@ -158,18 +158,6 @@ input:focus, textarea:focus { outline: none; }
   letter-spacing: -0.005em;
 }
 
-.motivation-banner {
-  text-align: center;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--on-primary);
-  background: var(--primary);
-  border-radius: var(--radius-input);
-  padding: 10px var(--r4);
-  margin-bottom: var(--r4);
-  letter-spacing: -0.005em;
-}
-
 .section { margin-bottom: var(--r5); }
 
 .section-head {
