@@ -127,7 +127,7 @@ input:focus, textarea:focus { outline: none; }
   max-width: 760px;
   margin: 0 auto;
   padding: var(--r4) var(--r3) calc(var(--r6) * 2) var(--r3);
-  padding-top: max(var(--r4), env(safe-area-inset-top));
+  padding-top: max(var(--r4), calc(env(safe-area-inset-top) + var(--r3)));
   padding-bottom: max(calc(var(--r6) * 2), calc(var(--r6) * 2 + env(safe-area-inset-bottom)));
 }
 
