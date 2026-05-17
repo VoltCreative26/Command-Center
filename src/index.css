@@ -618,6 +618,7 @@ input:focus, textarea:focus { outline: none; }
   border-radius: var(--radius-card);
   padding: var(--r1) var(--r4);
   box-shadow: var(--shadow-1);
+  overflow: hidden;
 }
 
 .task {
@@ -663,6 +664,7 @@ input:focus, textarea:focus { outline: none; }
 
 .task-text {
   flex: 1;
+  min-width: 0;
   font-size: 13px;
   font-weight: 500;
   color: var(--ink);
@@ -687,6 +689,7 @@ input:focus, textarea:focus { outline: none; }
   border-radius: var(--radius-chip);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
 }
 
 .task-estimate input {
