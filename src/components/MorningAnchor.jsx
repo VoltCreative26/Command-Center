@@ -63,7 +63,7 @@ export default function MorningAnchor({ userId, viewedDate, onAnchorChange }) {
   // Summary card — anchor exists and not editing
   if (anchor && !expanded) {
     const headline = isToday
-      ? "Let's make today your best one yet."
+      ? "Remember, you're doing this for you in 1 year."
       : `Anchor from ${new Date(viewedDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`
 
     return (
