@@ -10,6 +10,7 @@ import IdeaInbox from './components/IdeaInbox'
 import NorthStars from './components/NorthStars'
 import CalendarView from './components/CalendarView'
 import UserProfile from './components/UserProfile'
+import { usePullToRefresh } from './hooks/usePullToRefresh'
 
 const DESKTOP_BREAKPOINT = 1200
 
@@ -55,6 +56,8 @@ export default function App() {
   }
 
   const scheduleData = useScheduleData(session?.user?.id, viewedDate, handleTaskComplete)
+
+  const { pullDistance, refreshing } = usePullToRefresh(() => window.location.reload())
 
   if (loading) return <div className="loading">Loading…</div>
   if (!session) return <Auth />
@@ -118,8 +121,19 @@ export default function App() {
     </section>
   )
 
+  const THRESHOLD = 72
+  const pullProgress = Math.min(pullDistance / THRESHOLD, 1)
+
   return (
     <div className={`app${isDesktop ? ' is-desktop' : ''}`}>
+      {/* Pull-to-refresh indicator */}
+      <div
+        className={`ptr-indicator ${refreshing ? 'ptr-indicator--refreshing' : ''}`}
+        style={{ transform: `translateY(${refreshing ? 0 : pullDistance - THRESHOLD}px)`, opacity: refreshing ? 1 : pullProgress }}
+      >
+        <div className={`ptr-spinner ${refreshing ? 'ptr-spinner--spinning' : ''}`} style={{ transform: `rotate(${pullProgress * 360}deg)` }}>↻</div>
+      </div>
+
       <header className="masthead">
         <h1 className="masthead-title">Mission Control</h1>
       </header>
@@ -175,7 +189,10 @@ export default function App() {
 
       <div className="profile-section">
         <UserProfile user={session.user} />
-        <button className="signout" onClick={handleSignOut}>Sign out</button>
+        <div className="bottom-actions">
+          <button className="refresh-btn" onClick={() => window.location.reload()}>↻ Refresh</button>
+          <button className="signout" onClick={handleSignOut}>Sign out</button>
+        </div>
       </div>
 
       {estimateTask && (
