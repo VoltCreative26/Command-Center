@@ -7,6 +7,7 @@ export default function MorningAnchor({ userId, viewedDate, onAnchorChange }) {
   const [yesterdayWin, setYesterdayWin] = useState('')
   const [futureMattThanks, setFutureMattThanks] = useState('')
   const [nonNegotiable, setNonNegotiable] = useState('')
+  const [sayNoTo, setSayNoTo] = useState('')
   const isToday = viewedDate === todayISO()
 
   useEffect(() => {
@@ -25,22 +26,31 @@ export default function MorningAnchor({ userId, viewedDate, onAnchorChange }) {
       setYesterdayWin(data.feeling || '')
       setFutureMattThanks(data.win || '')
       setNonNegotiable(data.focus || '')
+      setSayNoTo(data.say_no_to || '')
       setExpanded(false)
     } else {
       setAnchor(null)
       setYesterdayWin('')
       setFutureMattThanks('')
       setNonNegotiable('')
+      setSayNoTo('')
       setExpanded(isToday)
     }
   }
 
   const save = async () => {
-    if (!futureMattThanks || !nonNegotiable) return
+    if (!futureMattThanks || !nonNegotiable || !sayNoTo) return
     const { data } = await supabase
       .from('morning_anchors')
       .upsert(
-        { user_id: userId, date: viewedDate, feeling: yesterdayWin, win: futureMattThanks, focus: nonNegotiable },
+        {
+          user_id: userId,
+          date: viewedDate,
+          feeling: yesterdayWin,
+          win: futureMattThanks,
+          focus: nonNegotiable,
+          say_no_to: sayNoTo,
+        },
         { onConflict: 'user_id,date' }
       )
       .select()
@@ -79,6 +89,12 @@ export default function MorningAnchor({ userId, viewedDate, onAnchorChange }) {
             <span className="anchor-summary-row-label">Today</span>
             <span className={`anchor-summary-row-value ${!anchor.focus ? 'anchor-summary-row-empty' : ''}`}>
               {anchor.focus || '—'}
+            </span>
+          </div>
+          <div className="anchor-summary-row">
+            <span className="anchor-summary-row-label">Say No</span>
+            <span className={`anchor-summary-row-value ${!anchor.say_no_to ? 'anchor-summary-row-empty' : ''}`}>
+              {anchor.say_no_to || '—'}
             </span>
           </div>
         </div>
@@ -129,6 +145,15 @@ export default function MorningAnchor({ userId, viewedDate, onAnchorChange }) {
           value={nonNegotiable}
           onChange={(e) => setNonNegotiable(e.target.value)}
           placeholder="The one thing that must happen"
+        />
+      </div>
+      <div className="anchor-field">
+        <label className="anchor-label">04 — What will I say no to today?</label>
+        <input
+          className="anchor-input"
+          value={sayNoTo}
+          onChange={(e) => setSayNoTo(e.target.value)}
+          placeholder="Protect your focus"
         />
       </div>
       <button className="anchor-done" onClick={save}>Done</button>
