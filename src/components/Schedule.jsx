@@ -24,7 +24,7 @@ export function useScheduleData(userId, viewedDate, onTaskComplete) {
   const [editingDueDateId, setEditingDueDateId] = useState(null)
   const isToday = viewedDate === todayISO()
 
-  useEffect(() => { load() }, [userId, viewedDate])
+  useEffect(() => { if (userId) load() }, [userId, viewedDate])
 
   const load = async () => {
     const blocksQuery = supabase

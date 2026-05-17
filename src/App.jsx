@@ -53,12 +53,13 @@ export default function App() {
     await supabase.auth.signOut()
   }
 
+  const scheduleData = useScheduleData(session?.user?.id, viewedDate, handleTaskComplete)
+
   if (loading) return <div className="loading">Loading…</div>
   if (!session) return <Auth />
 
   const userId = session.user.id
   const isPast = viewedDate < todayISO()
-  const scheduleData = useScheduleData(userId, viewedDate, handleTaskComplete)
 
   const anchorSection = (
     <section className="section" key="anchor">
