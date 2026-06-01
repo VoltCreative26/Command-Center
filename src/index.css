@@ -2821,6 +2821,22 @@ input:focus, textarea:focus { outline: none; }
 }
 .ti-devtools button:hover:not(:disabled) { color: var(--ink); background: var(--bg-soft); }
 .ti-devtools button:disabled { opacity: 0.5; cursor: default; }
+/* Mobile: let task rows wrap so the full title gets its own line and the
+   due / category / estimate controls flow onto a second, indented row. */
+@media (max-width: 760px) {
+  .task,
+  .task-add { flex-wrap: wrap; justify-content: flex-start; row-gap: 8px; }
+  .task-text,
+  .task-add input { flex: 0 0 calc(100% - 26px); min-width: 0; }
+  /* The controls pack left, aligned under the title (18px check + 8px gap). */
+  .task > :nth-child(3),
+  .task-add > :nth-child(3) { margin-left: 26px; }
+  /* Touch devices have no hover, so always show the due-date button —
+     this also removes the invisible gap it would otherwise leave. */
+  .task-due-btn { opacity: 1; }
+  .task-category { max-width: none; font-size: 11px; }
+}
+
 @media (max-width: 480px) {
-  .task-category { max-width: 88px; font-size: 10px; }
+  .task-category { max-width: none; font-size: 11px; }
 }
