@@ -6,20 +6,34 @@ export function usePullToRefresh(onRefresh, threshold = 72) {
   const [pullDistance, setPullDistance] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const startY = useRef(null)
+  const startX = useRef(null)
   const active = useRef(false)
+  // null = undecided, 'v' = vertical pull, 'h' = horizontal swipe (ignored)
+  const axis = useRef(null)
 
   useEffect(() => {
     const onTouchStart = (e) => {
       if (window.scrollY === 0 && !refreshing) {
         startY.current = e.touches[0].clientY
+        startX.current = e.touches[0].clientX
         active.current = true
+        axis.current = null
       }
     }
 
     const onTouchMove = (e) => {
       if (!active.current || startY.current === null) return
-      const delta = e.touches[0].clientY - startY.current
-      if (delta > 0) setPullDistance(Math.min(delta * 0.5, threshold))
+      const dy = e.touches[0].clientY - startY.current
+      const dx = e.touches[0].clientX - startX.current
+
+      // Lock the gesture axis once movement is unambiguous. A horizontal
+      // swipe must never drive the pull-to-refresh indicator.
+      if (axis.current === null && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) {
+        axis.current = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v'
+      }
+      if (axis.current === 'h') return
+
+      if (dy > 0) setPullDistance(Math.min(dy * 0.5, threshold))
     }
 
     const onTouchEnd = () => {
@@ -34,6 +48,8 @@ export function usePullToRefresh(onRefresh, threshold = 72) {
         setPullDistance(0)
       }
       startY.current = null
+      startX.current = null
+      axis.current = null
     }
 
     document.addEventListener('touchstart', onTouchStart, { passive: true })
