@@ -25,12 +25,16 @@ create table if not exists tasks (
   completed boolean default false,
   estimated_minutes int,
   actual_minutes int,
+  category text,
   position int not null default 0,
   from_idea_id uuid,
   created_at timestamptz default now(),
   completed_at timestamptz
 );
 create index if not exists tasks_user_date_idx on tasks(user_id, date);
+
+-- Migration for existing databases (safe to run repeatedly):
+alter table tasks add column if not exists category text;
 
 -- 3. Ideas (the inbox with 7-day expiration)
 create table if not exists ideas (

@@ -9,6 +9,7 @@ import EstimateModal from './components/EstimateModal'
 import IdeaInbox from './components/IdeaInbox'
 import NorthStars from './components/NorthStars'
 import CalendarView from './components/CalendarView'
+import TimeInsights from './components/TimeInsights'
 import UserProfile from './components/UserProfile'
 import { usePullToRefresh } from './hooks/usePullToRefresh'
 
@@ -21,6 +22,7 @@ export default function App() {
   const [scoreRefresh, setScoreRefresh] = useState(0)
   const [viewedDate, setViewedDate] = useState(todayISO())
   const [viewMode, setViewMode] = useState('day')
+  const [page, setPage] = useState('dashboard')
   const [isDesktop, setIsDesktop] = useState(() =>
     typeof window !== 'undefined' && window.innerWidth >= DESKTOP_BREAKPOINT
   )
@@ -124,6 +126,14 @@ export default function App() {
   const THRESHOLD = 72
   const pullProgress = Math.min(pullDistance / THRESHOLD, 1)
 
+  if (page === 'insights') {
+    return (
+      <div className={`app${isDesktop ? ' is-desktop' : ''}`}>
+        <TimeInsights user={session.user} onNavigate={setPage} onSignOut={handleSignOut} />
+      </div>
+    )
+  }
+
   return (
     <div className={`app${isDesktop ? ' is-desktop' : ''}`}>
       {/* Pull-to-refresh indicator */}
@@ -138,6 +148,18 @@ export default function App() {
         <h1 className="masthead-title">Mission Control</h1>
       </header>
 
+      <div className="page-nav">
+        <button className={`page-nav-btn ${page === 'dashboard' ? 'active' : ''}`} onClick={() => setPage('dashboard')}>Dashboard</button>
+        <button className={`page-nav-btn ${page === 'insights' ? 'active' : ''}`} onClick={() => setPage('insights')}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 7v5l3 2" />
+          </svg>
+          Time Insights
+        </button>
+      </div>
+
+      <>
       {viewMode === 'day' && <DateNavigator viewedDate={viewedDate} onChange={setViewedDate} />}
 
       <div className="view-tabs">
@@ -186,6 +208,7 @@ export default function App() {
           </div>
         )
       )}
+      </>
 
       <div className="profile-section">
         <UserProfile user={session.user} />

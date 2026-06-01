@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase, todayISO } from '../lib/supabase'
 import TimePicker, { formatTime, parseTime } from './TimePicker'
+import { CATEGORIES, DEFAULT_CATEGORY } from '../lib/estimation'
 
 export function timeToMinutes(timeStr) {
   const { hour, minute, period } = parseTime(timeStr)
@@ -35,6 +36,7 @@ export function useScheduleData(userId, viewedDate, onTaskComplete) {
   const [newLabel, setNewLabel] = useState('')
   const [newTask, setNewTask] = useState('')
   const [newTaskEstimate, setNewTaskEstimate] = useState('')
+  const [newTaskCategory, setNewTaskCategory] = useState(DEFAULT_CATEGORY)
   const [editingDueDateId, setEditingDueDateId] = useState(null)
   const isToday = viewedDate === todayISO()
 
@@ -115,6 +117,7 @@ export function useScheduleData(userId, viewedDate, onTaskComplete) {
         due_date: viewedDate,
         title: newTask.trim(),
         estimated_minutes: estimate,
+        category: newTaskCategory,
         position: tasks.length,
       })
       .select()
@@ -122,6 +125,11 @@ export function useScheduleData(userId, viewedDate, onTaskComplete) {
     if (data) setTasks([...tasks, data])
     setNewTask('')
     setNewTaskEstimate('')
+  }
+
+  const updateTaskCategory = async (id, category) => {
+    setTasks(tasks.map((t) => (t.id === id ? { ...t, category } : t)))
+    await supabase.from('tasks').update({ category }).eq('id', id)
   }
 
   const toggleTask = async (task) => {
@@ -165,9 +173,10 @@ export function useScheduleData(userId, viewedDate, onTaskComplete) {
     newLabel, setNewLabel,
     newTask, setNewTask,
     newTaskEstimate, setNewTaskEstimate,
+    newTaskCategory, setNewTaskCategory,
     editingDueDateId, setEditingDueDateId,
     addBlock, updateBlock, deleteBlock,
-    addTask, toggleTask, updateTaskText, updateTaskEstimate,
+    addTask, toggleTask, updateTaskText, updateTaskEstimate, updateTaskCategory,
     updateTaskDueDate, deleteTask,
   }
 }
@@ -251,8 +260,9 @@ export function TasksList({ data }) {
   const {
     viewedDate, tasks, setTasks,
     newTask, setNewTask, newTaskEstimate, setNewTaskEstimate,
+    newTaskCategory, setNewTaskCategory,
     editingDueDateId, setEditingDueDateId,
-    addTask, toggleTask, updateTaskText, updateTaskEstimate, updateTaskDueDate, deleteTask,
+    addTask, toggleTask, updateTaskText, updateTaskEstimate, updateTaskCategory, updateTaskDueDate, deleteTask,
   } = data
 
   return (
@@ -289,6 +299,15 @@ export function TasksList({ data }) {
             ) : (
               <button className="task-due-btn" onClick={() => setEditingDueDateId(t.id)} title="Set due date">Due</button>
             )}
+            <select
+              className="task-category"
+              value={t.category || ''}
+              onChange={(e) => updateTaskCategory(t.id, e.target.value)}
+              title="Category"
+            >
+              {!t.category && <option value="" disabled>Category</option>}
+              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
             <div className="task-estimate" title="Estimated minutes">
               <input
                 type="number"
@@ -310,6 +329,14 @@ export function TasksList({ data }) {
           onChange={(e) => setNewTask(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && addTask()}
         />
+        <select
+          className="task-category"
+          value={newTaskCategory}
+          onChange={(e) => setNewTaskCategory(e.target.value)}
+          title="Category"
+        >
+          {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
         <div className="task-estimate" style={{ background: 'transparent', border: '1px dashed var(--line-strong)', color: 'var(--muted)' }}>
           <input
             type="number"
