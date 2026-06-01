@@ -2837,6 +2837,17 @@ input:focus, textarea:focus { outline: none; }
   .task-category { max-width: none; font-size: 11px; }
 }
 
+/* On touch devices a swipe momentarily triggers :hover, which would animate
+   the row's padding-right and pop the delete button in/out — a visible jump.
+   Neutralize the hover reveal and keep the delete control permanently shown
+   with its space reserved so nothing shifts on swipe. */
+@media (hover: none) {
+  .task { padding-right: 28px; }
+  .task:hover { padding-right: 28px; }
+  .task-delete { opacity: 1; }
+  .task:hover .task-delete { opacity: 1; }
+}
+
 @media (max-width: 480px) {
   .task-category { max-width: none; font-size: 11px; }
 }
